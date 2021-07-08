@@ -1,45 +1,95 @@
 package usafe.java;
 
-import java.sql.*;  // Using 'Connection', 'Statement' and 'ResultSet' classes in java.sql package
- 
-public class App {   // Save as "JdbcSelectTest.java"
-   public static void main(String[] args) {
-      try (
-         // Step 1: Construct a database 'Connection' object called 'conn'
-         Connection conn = DriverManager.getConnection(
-               "jdbc:mysql://localhost:3306/ebookshop?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC",
-               "myuser", "xxxx");   // For MySQL only
-               // The format is: "jdbc:mysql://hostname:port/databaseName", "username", "password"
- 
-         // Step 2: Construct a 'Statement' object called 'stmt' inside the Connection created
-         Statement stmt = conn.createStatement();
-      ) {
-         // Step 3: Write a SQL query string. Execute the SQL query via the 'Statement'.
-         //  The query result is returned in a 'ResultSet' object called 'rset'.
-	  String strSelect = "select title, price, qty from books" + args[2]; // Should trigger security alert
-         System.out.println("The SQL statement is: " + strSelect + "\n"); // Echo For debugging
- 
-         ResultSet rset = stmt.executeQuery(strSelect);
- 
-         // Step 4: Process the 'ResultSet' by scrolling the cursor forward via next().
-         //  For each row, retrieve the contents of the cells with getXxx(columnName).
-         System.out.println("The records selected are:");
-         int rowCount = 0;
-         // Row-cursor initially positioned before the first row of the 'ResultSet'.
-         // rset.next() inside the whole-loop repeatedly moves the cursor to the next row.
-         // It returns false if no more rows.
-         while(rset.next()) {   // Repeatedly process each row
-            String title = rset.getString("title");  // retrieve a 'String'-cell in the row
-            double price = rset.getDouble("price");  // retrieve a 'double'-cell in the row
-            int    qty   = rset.getInt("qty");       // retrieve a 'int'-cell in the row
-            System.out.println(title + ", " + price + ", " + qty);
-            ++rowCount;
-         }
-         System.out.println("Total number of records = " + rowCount);
- 
-      } catch(SQLException ex) {
-         ex.printStackTrace();
-      }  // Step 5: Close conn and stmt - Done automatically by try-with-resources (JDK 7)
-   }
-}
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.Scanner;
+import java.util.logging.Logger;
 
+/**
+ * Demonstration of SonarQube only detecting vulnerability of in-line string
+ * concatenation for executing queries.
+ *
+ * @author Christopher Towner
+ */
+public class App {
+
+    private static final String URL = "jdbc:derby:sonar;create=true";
+
+    public static void main(String[] args) {
+        try (Scanner scanner = new Scanner(System.in)) {
+            Class.forName("org.apache.derby.jdbc.EmbeddedDriver").newInstance();
+            createTable();
+
+            System.out.print("User: ");
+            String username = scanner.nextLine();
+            System.out.print("Pass: ");
+            String password = scanner.nextLine();
+
+            detectedVulnerability(username, password);
+        } catch (Exception e) {
+            Logger.getGlobal().severe(e.getLocalizedMessage());
+        }
+
+        try {
+            DriverManager.getConnection("jdbc:derby:sonar;shutdown=true");
+        } catch (SQLException e) {
+            //derby always throws exception on shutdown
+        }
+    }
+
+    private static void createTable() {
+        try (Connection connection = DriverManager.getConnection(URL);
+                Statement statement = connection.createStatement()) {
+
+            statement.execute("CREATE TABLE db_user (id INT PRIMARY KEY, username VARCHAR(20), password VARCHAR(20))");
+            statement.execute("INSERT INTO db_user VALUES (1, 'admin', 'admin')");
+            statement.execute("INSERT INTO db_user VALUES (2, 'user', 'pass')");
+        } catch (SQLException e) {
+            //ignore exceptions from table or rows existing
+        }
+    }
+
+    /**
+     * SonarQube will detect the vulnerability in this method.
+     *
+     * @param username
+     * @param password
+     */
+    private static void detectedVulnerability(String username, String password) {
+        try (Connection connection = DriverManager.getConnection(URL);
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery("SELECT * FROM db_user WHERE username = '" + username + "' AND PASSWORD = '" + password + "'")) {
+
+            if (!resultSet.next()) {
+                throw new SecurityException("User name or password incorrect");
+            }
+        } catch (SecurityException | SQLException e) {
+            Logger.getGlobal().info(e.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * SonarQube will NOT detect vulnerability in this method.
+     *
+     * @param username
+     * @param password
+     */
+    private static void undetectedVulnerability(String username, String password) {
+        String sql = "SELECT * FROM db_user WHERE username = '" + username + "' AND PASSWORD = '" + password + "'";
+
+        try (Connection connection = DriverManager.getConnection(URL);
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)) {
+
+            if (!resultSet.next()) {
+                throw new SecurityException("User name or password incorrect");
+            }
+        } catch (SecurityException | SQLException e) {
+            Logger.getGlobal().info(e.getLocalizedMessage());
+        }
+    }
+
+}
