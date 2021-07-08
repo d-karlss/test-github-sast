@@ -15,7 +15,7 @@ public class JdbcSelectTest {   // Save as "JdbcSelectTest.java"
       ) {
          // Step 3: Write a SQL query string. Execute the SQL query via the 'Statement'.
          //  The query result is returned in a 'ResultSet' object called 'rset'.
-	  String strSelect = "select title, price, qty from books" + args[0]; // Should trigger security alert
+	  String strSelect = "select title, price, qty from books" + args[1]; // Should trigger security alert
          System.out.println("The SQL statement is: " + strSelect + "\n"); // Echo For debugging
  
          ResultSet rset = stmt.executeQuery(strSelect);
