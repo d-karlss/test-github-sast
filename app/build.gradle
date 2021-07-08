@@ -24,7 +24,7 @@ dependencies {
     implementation 'com.google.guava:guava:30.0-jre'
 }
 
-application {
+//application {
     // Define the main class for the application.
-    mainClass = 'unsafe.java.App'
-}
+//    mainClass = 'unsafe.java.App'
+//}
