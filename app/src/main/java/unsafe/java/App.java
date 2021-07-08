@@ -1,7 +1,8 @@
+package usafe.java;
 
 import java.sql.*;  // Using 'Connection', 'Statement' and 'ResultSet' classes in java.sql package
  
-public class JdbcSelectTest {   // Save as "JdbcSelectTest.java"
+public class App {   // Save as "JdbcSelectTest.java"
    public static void main(String[] args) {
       try (
          // Step 1: Construct a database 'Connection' object called 'conn'
