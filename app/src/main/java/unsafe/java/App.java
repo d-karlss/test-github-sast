@@ -92,4 +92,31 @@ public class App {
         }
     }
 
+        /**
+     * SonarQube will NOT detect vulnerability in this method.
+     *
+     * @param username
+     * @param password
+     */
+    private static void undetectedVulnerability2(String username, String password) {
+	StringBuilder sb = new StringBuilder();
+	sb.append("SELECT * FROM db_user WHERE username = '");
+	sb.append(username);
+	sb.append("' AND PASSWORD = '");
+	sb.append(password);
+	sb.append("'");
+	String sql = sb.toString();
+        try (Connection connection = DriverManager.getConnection(URL);
+                Statement statement = connection.createStatement();
+                ResultSet resultSet = statement.executeQuery(sql)) {
+
+            if (!resultSet.next()) {
+                throw new SecurityException("User name or password incorrect");
+            }
+        } catch (SecurityException | SQLException e) {
+            Logger.getGlobal().info(e.getLocalizedMessage());
+        }
+    }
+
+
 }
